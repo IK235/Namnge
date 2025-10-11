@@ -8,12 +8,16 @@ class RenameViewModel: ObservableObject {
     @Published var selectedPattern: RenamePattern = .findReplace {
         didSet {
             operation.pattern = selectedPattern
-            updatePreview()
+            Task { @MainActor in
+                updatePreview()
+            }
         }
     }
     @Published var operation = RenameOperation(pattern: .findReplace) {
         didSet {
-            updatePreview()
+            Task { @MainActor in
+                updatePreview()
+            }
         }
     }
     @Published var errorMessage: String?
@@ -98,8 +102,45 @@ class RenameViewModel: ObservableObject {
     }
 
     func updatePreview() {
+        if operation.pattern == .aiSmart {
+            // AI preview handled separately (async)
+            errorMessage = nil
+            return
+        }
+
         files = renameService.previewRename(files: files, operation: operation)
         errorMessage = hasConflicts ? "Multiple files would have the same name" : nil
+    }
+
+    func performAIRename() async {
+        guard !operation.aiPrompt.isEmpty else {
+            errorMessage = "Please describe what you want to rename"
+            return
+        }
+
+        errorMessage = "🤖 AI is thinking..."
+
+        do {
+            let results = try await AIRenameService.shared.batchRename(
+                files: files,
+                prompt: operation.aiPrompt,
+                provider: operation.aiProvider
+            )
+
+            // Update files with AI-generated names
+            for (originalFile, newName) in results {
+                if let index = files.firstIndex(where: { $0.id == originalFile.id }) {
+                    files[index].newName = newName
+                }
+            }
+
+            // Check for conflicts
+            updatePreview()
+            errorMessage = "✓ AI generated names for \(results.count) files!"
+
+        } catch {
+            errorMessage = "AI Error: \(error.localizedDescription)"
+        }
     }
 
     func performRename() {

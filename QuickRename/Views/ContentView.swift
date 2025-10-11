@@ -7,18 +7,24 @@ struct ContentView: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            mainView
-                .tabItem {
-                    Label("Rename", systemImage: "pencil.and.list.clipboard")
-                }
-                .tag(0)
+        ZStack {
+            // Liquid glass background
+            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
+                .ignoresSafeArea()
 
-            historyView
-                .tabItem {
-                    Label("History", systemImage: "clock.arrow.circlepath")
-                }
-                .tag(1)
+            TabView(selection: $selectedTab) {
+                mainView
+                    .tabItem {
+                        Label("Rename", systemImage: "pencil.and.list.clipboard")
+                    }
+                    .tag(0)
+
+                historyView
+                    .tabItem {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
+                    .tag(1)
+            }
         }
         .frame(width: 700, height: 550)
         .onAppear {
@@ -110,12 +116,26 @@ struct ContentView: View {
                 // Action buttons
                 HStack {
                     if let error = viewModel.errorMessage {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
+                        Label(error, systemImage: viewModel.errorMessage?.hasPrefix("✓") == true ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(viewModel.errorMessage?.hasPrefix("✓") == true ? .green : .red)
                             .font(.caption)
                     }
 
                     Spacer()
+
+                    // AI Generate button (only for AI Smart pattern)
+                    if viewModel.selectedPattern == .aiSmart {
+                        Button(action: {
+                            Task {
+                                await viewModel.performAIRename()
+                            }
+                        }) {
+                            Label("Generate AI Names", systemImage: "sparkles")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.purple)
+                        .disabled(viewModel.files.isEmpty || viewModel.operation.aiPrompt.isEmpty)
+                    }
 
                     if viewModel.hasRenamed {
                         Button("Undo") {
@@ -124,14 +144,38 @@ struct ContentView: View {
                         .keyboardShortcut("z", modifiers: .command)
                     }
 
-                    Button("Rename \(viewModel.changedFilesCount) Files") {
-                        viewModel.performRename()
+                    if viewModel.selectedPattern != .aiSmart {
+                        Button("Rename \(viewModel.changedFilesCount) Files") {
+                            viewModel.performRename()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.changedFilesCount == 0 || viewModel.hasConflicts)
+                        .keyboardShortcut(.return, modifiers: .command)
+                    } else {
+                        Button("Apply Renames") {
+                            viewModel.performRename()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(viewModel.changedFilesCount == 0 || viewModel.hasConflicts)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.changedFilesCount == 0 || viewModel.hasConflicts)
-                    .keyboardShortcut(.return, modifiers: .command)
                 }
                 .padding()
+
+                Divider()
+
+                // Footer with Quit button
+                HStack {
+                    Button("Quit") {
+                        NSApplication.shared.terminate(nil)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(nsColor: .windowBackgroundColor))
             }
         }
     }
@@ -322,6 +366,40 @@ struct PatternSettingsView: View {
                 Text("Example: IMG_(\\d+) → Photo_$1")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+            case .aiSmart:
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("🤖 Describe what you want:")
+                        .font(.subheadline.bold())
+
+                    TextField("e.g., 'Paris vacation photos' or 'Invoices from Q1 2024'", text: $operation.aiPrompt, axis: .vertical)
+                        .lineLimit(2...4)
+
+                    HStack {
+                        Text("AI Provider:")
+                            .font(.caption)
+
+                        Picker("", selection: $operation.aiProvider) {
+                            Text("⚡ Groq (Fast)").tag(AIProvider.groq)
+                            Text("🧠 Apple Vision (Local)").tag(AIProvider.local)
+                        }
+                        .labelsHidden()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("💡 Tips:")
+                            .font(.caption.bold())
+                        Text("• Be specific: 'Wedding photos from June 2024'")
+                            .font(.caption2)
+                        Text("• Mention location, date, or subject")
+                            .font(.caption2)
+                        Text("• AI works best with images and documents")
+                            .font(.caption2)
+                    }
+                    .padding(8)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+                }
             }
         }
         .textFieldStyle(.roundedBorder)
@@ -331,6 +409,26 @@ struct PatternSettingsView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = operation.dateFormat
         return formatter.string(from: Date())
+    }
+}
+
+// MARK: - Visual Effect Blur (Liquid Glass)
+
+struct VisualEffectBlur: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let visualEffectView = NSVisualEffectView()
+        visualEffectView.material = material
+        visualEffectView.blendingMode = blendingMode
+        visualEffectView.state = .active
+        return visualEffectView
+    }
+
+    func updateNSView(_ visualEffectView: NSVisualEffectView, context: Context) {
+        visualEffectView.material = material
+        visualEffectView.blendingMode = blendingMode
     }
 }
 
