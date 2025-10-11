@@ -1,5 +1,11 @@
 import Foundation
 
+enum AIProvider: String, CaseIterable {
+    case groq       // Fast & Free (Mixtral)
+    case claude     // Best quality (Anthropic)
+    case local      // Apple Vision (offline fallback)
+}
+
 enum RenamePattern: String, CaseIterable, Identifiable {
     case findReplace = "Find & Replace"
     case sequential = "Sequential Numbers"
@@ -9,6 +15,7 @@ enum RenamePattern: String, CaseIterable, Identifiable {
     case changeCase = "Change Case"
     case dateStamp = "Add Date"
     case regex = "Regex Pattern"
+    case aiSmart = "AI Smart Rename"
 
     var id: String { rawValue }
 
@@ -22,6 +29,7 @@ enum RenamePattern: String, CaseIterable, Identifiable {
         case .changeCase: return "textformat"
         case .dateStamp: return "calendar.badge.clock"
         case .regex: return "asterisk.circle"
+        case .aiSmart: return "sparkles"
         }
     }
 
@@ -35,6 +43,7 @@ enum RenamePattern: String, CaseIterable, Identifiable {
         case .changeCase: return "Uppercase, lowercase, or title case"
         case .dateStamp: return "Add current date/time"
         case .regex: return "Advanced pattern matching"
+        case .aiSmart: return "AI generates smart, descriptive names"
         }
     }
 }
@@ -60,6 +69,10 @@ struct RenameOperation {
     var dateFormat: String = "yyyy-MM-dd"
     var regexPattern: String = ""
     var regexReplacement: String = ""
+
+    // AI Settings
+    var aiPrompt: String = ""
+    var aiProvider: AIProvider = .groq
 
     func apply(to filename: String) -> String {
         let components = filename.split(separator: ".", omittingEmptySubsequences: false)
@@ -118,6 +131,10 @@ struct RenameOperation {
                     // Invalid regex - return original
                 }
             }
+
+        case .aiSmart:
+            // AI renaming handled by main app, not extension
+            break
         }
 
         return result + ext
