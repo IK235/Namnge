@@ -4,7 +4,44 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @EnvironmentObject var viewModel: RenameViewModel
     @StateObject private var history = RenameHistory()
+    @StateObject private var presetManager = PresetManager.shared
+    @ObservedObject private var preferences = AppPreferences.shared
+    @ObservedObject private var updateChecker = UpdateChecker.shared
     @State private var selectedTab = 0
+    @State private var showSavePresetDialog = false
+    @State private var showLoadPresetMenu = false
+    @State private var presetName = ""
+    @State private var searchText = ""
+    @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasSeenOnboarding")
+    @State private var preferencesWindowInstance: NSWindow?
+
+    var filteredFiles: [FileItem] {
+        if searchText.isEmpty {
+            return viewModel.files
+        } else {
+            return viewModel.files.filter { file in
+                file.originalName.localizedCaseInsensitiveContains(searchText) ||
+                file.newName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+
+    func openPreferences() {
+        if preferencesWindowInstance == nil {
+            let preferencesView = PreferencesView()
+            let hostingController = NSHostingController(rootView: preferencesView)
+
+            let window = NSWindow(contentViewController: hostingController)
+            window.title = "Namnge Preferences"
+            window.styleMask = [.titled, .closable]
+            window.center()
+
+            preferencesWindowInstance = window
+        }
+
+        preferencesWindowInstance?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     var body: some View {
         ZStack {
@@ -12,24 +49,112 @@ struct ContentView: View {
             VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
                 .ignoresSafeArea()
 
-            TabView(selection: $selectedTab) {
-                mainView
-                    .tabItem {
-                        Label("Rename", systemImage: "pencil.and.list.clipboard")
+            VStack(spacing: 0) {
+                // Custom Tab Bar
+                HStack(spacing: 4) {
+                    Button {
+                        withAnimation {
+                            selectedTab = 0
+                        }
+                    } label: {
+                        Label("Rename", systemImage: "tag")
+                            .font(.system(size: 11))
+                            .foregroundColor(selectedTab == 0 ? .white : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(selectedTab == 0 ? preferences.accentColor.color : Color.clear)
+                            .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
-                    .tag(0)
+                    .buttonStyle(.plain)
 
-                historyView
-                    .tabItem {
+                    Button {
+                        withAnimation {
+                            selectedTab = 1
+                        }
+                    } label: {
                         Label("History", systemImage: "clock.arrow.circlepath")
+                            .font(.system(size: 11))
+                            .foregroundColor(selectedTab == 1 ? .white : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(selectedTab == 1 ? preferences.accentColor.color : Color.clear)
+                            .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
-                    .tag(1)
+                    .buttonStyle(.plain)
+                }
+                .padding(4)
+
+                // Update banner
+                if updateChecker.updateAvailable {
+                    HStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundStyle(preferences.accentColor.color)
+
+                        Text("Update available: v\(updateChecker.latestVersion)")
+                            .font(.caption)
+
+                        Spacer()
+
+                        Button("Download") {
+                            if let url = URL(string: updateChecker.downloadURL) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .tint(preferences.accentColor.color)
+
+                        Button {
+                            updateChecker.dismissUpdate()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(preferences.accentColor.color.opacity(0.1))
+                }
+
+                // Content based on selected tab
+                if selectedTab == 0 {
+                    mainView
+                } else {
+                    historyView
+                }
             }
         }
         .frame(width: 700, height: 550)
+        .accentColor(preferences.accentColor.color)
         .onAppear {
             viewModel.history = history
         }
+        .sheet(isPresented: $showSavePresetDialog) {
+            SavePresetDialog(
+                presetName: $presetName,
+                onSave: {
+                    if !presetName.isEmpty {
+                        presetManager.savePreset(name: presetName, operation: viewModel.operation)
+                        presetName = ""
+                        showSavePresetDialog = false
+                    }
+                },
+                onCancel: {
+                    presetName = ""
+                    showSavePresetDialog = false
+                }
+            )
+        }
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingView(isPresented: $showOnboarding)
+                .onDisappear {
+                    UserDefaults.standard.set(true, forKey: "hasSeenOnboarding")
+                }
+        }
+        .tint(preferences.accentColor.color)
     }
 
     var mainView: some View {
@@ -41,10 +166,31 @@ struct ContentView: View {
                     .padding()
 
                 List(RenamePattern.allCases, selection: $viewModel.selectedPattern) { pattern in
-                    Label(pattern.rawValue, systemImage: pattern.icon)
-                        .tag(pattern)
+                    HStack {
+                        Label(pattern.rawValue, systemImage: pattern.icon)
+                            .foregroundStyle(.white)
+
+                        Spacer()
+
+                        Image(systemName: preferences.isFavorite(pattern) ? "star.fill" : "star")
+                            .foregroundStyle(preferences.isFavorite(pattern) ? .yellow : .secondary)
+                            .scaleEffect(preferences.isFavorite(pattern) ? 1.1 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: preferences.isFavorite(pattern))
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                    preferences.toggleFavorite(pattern)
+                                }
+                            }
+                    }
+                    .tag(pattern)
+                    .contentShape(Rectangle())
+                    .listRowBackground(
+                        viewModel.selectedPattern == pattern ?
+                            preferences.accentColor.color : Color.clear
+                    )
                 }
                 .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
             }
             .frame(minWidth: 200, idealWidth: 220, maxWidth: 280)
 
@@ -53,8 +199,52 @@ struct ContentView: View {
                 // Settings panel
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Settings")
-                            .font(.headline)
+                        HStack {
+                            Text("Settings")
+                                .font(.headline)
+
+                            Spacer()
+
+                            // Preset buttons
+                            Menu {
+                                ForEach(presetManager.presets) { preset in
+                                    Button(preset.name) {
+                                        let operation = preset.toOperation()
+                                        viewModel.selectedPattern = operation.pattern
+                                        viewModel.operation = operation
+                                    }
+                                }
+
+                                if presetManager.presets.isEmpty {
+                                    Text("No presets saved")
+                                }
+
+                                Divider()
+
+                                Button {
+                                    _ = presetManager.importPresets()
+                                } label: {
+                                    Label("Import Presets...", systemImage: "square.and.arrow.down")
+                                }
+
+                                Button {
+                                    _ = presetManager.exportPresets()
+                                } label: {
+                                    Label("Export Presets...", systemImage: "square.and.arrow.up")
+                                }
+                                .disabled(presetManager.presets.isEmpty)
+                            } label: {
+                                Label("Load", systemImage: "folder")
+                            }
+                            .tint(preferences.accentColor.color)
+
+                            Button {
+                                showSavePresetDialog = true
+                            } label: {
+                                Label("Save", systemImage: "square.and.arrow.down")
+                            }
+                            .tint(preferences.accentColor.color)
+                        }
 
                         PatternSettingsView(
                             pattern: viewModel.selectedPattern,
@@ -70,17 +260,74 @@ struct ContentView: View {
                 // File list with preview
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Preview (\(viewModel.files.count) files)")
+                        Text("Preview (\(filteredFiles.count) files)")
                             .font(.headline)
 
+                        if viewModel.hasConflicts {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text("Duplicates detected")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+
                         Spacer()
+
+                        // Sort menu
+                        Menu {
+                            Button {
+                                viewModel.sortFiles(by: .name)
+                            } label: {
+                                Label("Name (A-Z)", systemImage: "textformat.abc")
+                            }
+
+                            Button {
+                                viewModel.sortFiles(by: .size)
+                            } label: {
+                                Label("Size", systemImage: "arrow.up.arrow.down")
+                            }
+
+                            Button {
+                                viewModel.sortFiles(by: .date)
+                            } label: {
+                                Label("Date Modified", systemImage: "calendar")
+                            }
+                        } label: {
+                            Label("Sort", systemImage: "arrow.up.arrow.down.circle")
+                        }
+                        .tint(preferences.accentColor.color)
+                        .disabled(viewModel.files.isEmpty)
 
                         Button(action: { viewModel.clearFiles() }) {
                             Label("Clear", systemImage: "trash")
                         }
+                        .tint(preferences.accentColor.color)
                         .disabled(viewModel.files.isEmpty)
                     }
                     .padding([.horizontal, .top])
+
+                    // Search field
+                    if !viewModel.files.isEmpty {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("Search files...", text: $searchText)
+                                .textFieldStyle(.plain)
+                            if !searchText.isEmpty {
+                                Button {
+                                    searchText = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(8)
+                        .background(Color(nsColor: .controlBackgroundColor))
+                        .cornerRadius(6)
+                        .padding(.horizontal)
+                    }
 
                     if viewModel.files.isEmpty {
                         VStack(spacing: 16) {
@@ -96,10 +343,11 @@ struct ContentView: View {
                                 viewModel.selectFiles()
                             }
                             .buttonStyle(.borderedProminent)
+                            .tint(preferences.accentColor.color)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        List(viewModel.files) { file in
+                        List(filteredFiles) { file in
                             FileRowView(file: file)
                         }
                         .listStyle(.plain)
@@ -133,7 +381,7 @@ struct ContentView: View {
                             Label("Generate AI Names", systemImage: "sparkles")
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.purple)
+                        .tint(preferences.accentColor.color)
                         .disabled(viewModel.files.isEmpty || viewModel.operation.aiPrompt.isEmpty)
                     }
 
@@ -149,6 +397,7 @@ struct ContentView: View {
                             viewModel.performRename()
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(preferences.accentColor.color)
                         .disabled(viewModel.changedFilesCount == 0 || viewModel.hasConflicts)
                         .keyboardShortcut(.return, modifiers: .command)
                     } else {
@@ -163,15 +412,36 @@ struct ContentView: View {
 
                 Divider()
 
-                // Footer with Quit button
+                // Footer with Preferences and Quit buttons
                 HStack {
+                    Button("Preferences") {
+                        openPreferences()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(preferences.accentColor.color)
+                    .keyboardShortcut(",", modifiers: .command)
+
+                    Spacer()
+
+                    // Usage statistics
+                    if history.totalFilesRenamed > 0 {
+                        Text("\(history.totalFilesRenamed) files renamed")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.secondary.opacity(0.1))
+                            .cornerRadius(6)
+                    }
+
+                    Spacer()
+
                     Button("Quit") {
                         NSApplication.shared.terminate(nil)
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.secondary)
-
-                    Spacer()
+                    .keyboardShortcut("q", modifiers: .command)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
@@ -217,12 +487,24 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: item.pattern.icon)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(preferences.accentColor.color)
 
                             Text(item.pattern.rawValue)
                                 .font(.headline)
 
                             Spacer()
+
+                            Button {
+                                let success = history.undoRename(item)
+                                if success {
+                                    // Refresh the file list in rename tab
+                                    viewModel.refreshFiles()
+                                }
+                            } label: {
+                                Label("Undo", systemImage: "arrow.uturn.backward")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
 
                             Text(item.formattedDate)
                                 .font(.caption)
@@ -241,7 +523,7 @@ struct ContentView: View {
 
                                 Image(systemName: "arrow.right")
                                     .font(.caption2)
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(preferences.accentColor.color)
 
                                 Text(file.new)
                                     .font(.system(.caption, design: .monospaced))
@@ -265,23 +547,52 @@ struct ContentView: View {
 
 struct FileRowView: View {
     let file: FileItem
+    @State private var thumbnail: NSImage?
+    @ObservedObject private var preferences = AppPreferences.shared
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: file.hasConflict ? "exclamationmark.circle.fill" : "doc")
-                .foregroundStyle(file.hasConflict ? .red : .secondary)
-                .font(.title3)
+            // Thumbnail or icon
+            Group {
+                if let thumbnail = thumbnail {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Image(systemName: file.hasConflict ? "exclamationmark.circle.fill" : iconForFile(file.url))
+                        .foregroundStyle(file.hasConflict ? .red : .secondary)
+                        .font(.title3)
+                        .frame(width: 40, height: 40)
+                }
+            }
+            .onAppear {
+                loadThumbnail()
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(file.originalName)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text(file.originalName)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text(file.formattedFileSize)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.1))
+                        .cornerRadius(4)
+                }
 
                 if file.isChanged {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.right")
                             .font(.caption)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(preferences.accentColor.color)
 
                         Text(file.newName)
                             .font(.system(.body, design: .monospaced))
@@ -304,11 +615,56 @@ struct FileRowView: View {
         }
         .padding(.vertical, 4)
     }
+
+    private func loadThumbnail() {
+        let url = file.url
+        DispatchQueue.global(qos: .userInitiated).async {
+            let size = CGSize(width: 80, height: 80)
+            let image = NSWorkspace.shared.icon(forFile: url.path)
+
+            // Try to get actual thumbnail for images
+            if let cgImage = NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                let thumbnail = NSImage(cgImage: cgImage, size: size)
+                DispatchQueue.main.async {
+                    self.thumbnail = thumbnail
+                }
+            } else {
+                // Use file icon
+                DispatchQueue.main.async {
+                    self.thumbnail = image
+                }
+            }
+        }
+    }
+
+    private func iconForFile(_ url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+
+        switch ext {
+        case "jpg", "jpeg", "png", "gif", "heic", "webp":
+            return "photo"
+        case "mp4", "mov", "avi", "mkv":
+            return "video"
+        case "mp3", "wav", "m4a", "flac":
+            return "music.note"
+        case "pdf":
+            return "doc.richtext"
+        case "doc", "docx", "txt", "rtf":
+            return "doc.text"
+        case "xls", "xlsx", "numbers":
+            return "tablecells"
+        case "zip", "rar", "7z":
+            return "archivebox"
+        default:
+            return "doc"
+        }
+    }
 }
 
 struct PatternSettingsView: View {
     let pattern: RenamePattern
     @Binding var operation: RenameOperation
+    @ObservedObject private var preferences = AppPreferences.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -397,7 +753,7 @@ struct PatternSettingsView: View {
                             .font(.caption2)
                     }
                     .padding(8)
-                    .background(Color.blue.opacity(0.1))
+                    .background(preferences.accentColor.color.opacity(0.1))
                     .cornerRadius(6)
                 }
             }
@@ -409,6 +765,43 @@ struct PatternSettingsView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = operation.dateFormat
         return formatter.string(from: Date())
+    }
+}
+
+// MARK: - Save Preset Dialog
+
+struct SavePresetDialog: View {
+    @Binding var presetName: String
+    let onSave: () -> Void
+    let onCancel: () -> Void
+    @ObservedObject private var preferences = AppPreferences.shared
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Save Preset")
+                .font(.headline)
+
+            TextField("Preset name (e.g. 'Travel Photos')", text: $presetName)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 300)
+
+            HStack(spacing: 12) {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.escape)
+
+                Button("Save") {
+                    onSave()
+                }
+                .keyboardShortcut(.return)
+                .disabled(presetName.isEmpty)
+                .buttonStyle(.borderedProminent)
+                .tint(preferences.accentColor.color)
+            }
+        }
+        .padding()
+        .frame(width: 350, height: 150)
     }
 }
 

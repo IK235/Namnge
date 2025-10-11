@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C86A5B0F2E993DFC00E21A64 /* QuickRenameExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C86A5B092E993DFC00E21A64 /* QuickRenameExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C86A5B0F2E993DFC00E21A64 /* NamngeExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C86A5B092E993DFC00E21A64 /* NamngeExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,7 +27,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				C86A5B0F2E993DFC00E21A64 /* QuickRenameExtension.appex in Embed Foundation Extensions */,
+				C86A5B0F2E993DFC00E21A64 /* NamngeExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -35,8 +35,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		C86A5A092E993DFC00E21A63 /* QuickRename.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuickRename.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C86A5B092E993DFC00E21A64 /* QuickRenameExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuickRenameExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C86A5A092E993DFC00E21A63 /* Namnge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Namnge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C86A5B092E993DFC00E21A64 /* NamngeExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NamngeExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -82,8 +82,8 @@
 		C86A5A0A2E993DFC00E21A63 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C86A5A092E993DFC00E21A63 /* QuickRename.app */,
-				C86A5B092E993DFC00E21A64 /* QuickRenameExtension.appex */,
+				C86A5A092E993DFC00E21A63 /* Namnge.app */,
+				C86A5B092E993DFC00E21A64 /* NamngeExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,9 +91,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C86A5A082E993DFC00E21A63 /* QuickRename */ = {
+		C86A5A082E993DFC00E21A63 /* Namnge */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C86A5A162E993DFF00E21A63 /* Build configuration list for PBXNativeTarget "QuickRename" */;
+			buildConfigurationList = C86A5A162E993DFF00E21A63 /* Build configuration list for PBXNativeTarget "Namnge" */;
 			buildPhases = (
 				C86A5A052E993DFC00E21A63 /* Sources */,
 				C86A5A062E993DFC00E21A63 /* Frameworks */,
@@ -108,16 +108,16 @@
 			fileSystemSynchronizedGroups = (
 				C86A5A0B2E993DFC00E21A63 /* QuickRename */,
 			);
-			name = QuickRename;
+			name = Namnge;
 			packageProductDependencies = (
 			);
 			productName = QuickRename;
-			productReference = C86A5A092E993DFC00E21A63 /* QuickRename.app */;
+			productReference = C86A5A092E993DFC00E21A63 /* Namnge.app */;
 			productType = "com.apple.product-type.application";
 		};
-		C86A5B082E993DFC00E21A64 /* QuickRenameExtension */ = {
+		C86A5B082E993DFC00E21A64 /* NamngeExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C86A5B162E993DFF00E21A64 /* Build configuration list for PBXNativeTarget "QuickRenameExtension" */;
+			buildConfigurationList = C86A5B162E993DFF00E21A64 /* Build configuration list for PBXNativeTarget "NamngeExtension" */;
 			buildPhases = (
 				C86A5B052E993DFC00E21A64 /* Sources */,
 				C86A5B062E993DFC00E21A64 /* Frameworks */,
@@ -130,11 +130,11 @@
 			fileSystemSynchronizedGroups = (
 				C86A5B0B2E993DFC00E21A64 /* QuickRenameExtension */,
 			);
-			name = QuickRenameExtension;
+			name = NamngeExtension;
 			packageProductDependencies = (
 			);
 			productName = QuickRenameExtension;
-			productReference = C86A5B092E993DFC00E21A64 /* QuickRenameExtension.appex */;
+			productReference = C86A5B092E993DFC00E21A64 /* NamngeExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -155,7 +155,7 @@
 					};
 				};
 			};
-			buildConfigurationList = C86A5A042E993DFC00E21A63 /* Build configuration list for PBXProject "QuickRename" */;
+			buildConfigurationList = C86A5A042E993DFC00E21A63 /* Build configuration list for PBXProject "Namnge" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -169,8 +169,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C86A5A082E993DFC00E21A63 /* QuickRename */,
-				C86A5B082E993DFC00E21A64 /* QuickRenameExtension */,
+				C86A5A082E993DFC00E21A63 /* Namnge */,
+				C86A5B082E993DFC00E21A64 /* NamngeExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -212,7 +212,7 @@
 /* Begin PBXTargetDependency section */
 		C86A5B0E2E993DFC00E21A64 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = C86A5B082E993DFC00E21A64 /* QuickRenameExtension */;
+			target = C86A5B082E993DFC00E21A64 /* NamngeExtension */;
 			targetProxy = C86A5B0D2E993DFC00E21A64 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -447,7 +447,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C86A5A042E993DFC00E21A63 /* Build configuration list for PBXProject "QuickRename" */ = {
+		C86A5A042E993DFC00E21A63 /* Build configuration list for PBXProject "Namnge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C86A5A142E993DFF00E21A63 /* Debug */,
@@ -456,7 +456,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C86A5A162E993DFF00E21A63 /* Build configuration list for PBXNativeTarget "QuickRename" */ = {
+		C86A5A162E993DFF00E21A63 /* Build configuration list for PBXNativeTarget "Namnge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C86A5A172E993DFF00E21A63 /* Debug */,
@@ -465,7 +465,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C86A5B162E993DFF00E21A64 /* Build configuration list for PBXNativeTarget "QuickRenameExtension" */ = {
+		C86A5B162E993DFF00E21A64 /* Build configuration list for PBXNativeTarget "NamngeExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C86A5B172E993DFF00E21A64 /* Debug */,

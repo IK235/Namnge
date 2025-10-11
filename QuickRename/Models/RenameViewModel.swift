@@ -2,6 +2,12 @@ import SwiftUI
 import AppKit
 import Combine
 
+enum SortOption {
+    case name
+    case size
+    case date
+}
+
 @MainActor
 class RenameViewModel: ObservableObject {
     @Published var files: [FileItem] = []
@@ -99,6 +105,45 @@ class RenameViewModel: ObservableObject {
         originalFiles.removeAll()
         hasRenamed = false
         errorMessage = nil
+    }
+
+    func refreshFiles() {
+        // Re-check all files to update their current state
+        let currentURLs = files.map { $0.url }
+        files.removeAll()
+
+        for url in currentURLs {
+            // Check if file still exists at original location or was renamed
+            let directory = url.deletingLastPathComponent()
+            if let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: [.nameKey]) {
+                for case let fileURL as URL in enumerator {
+                    if fileURL.lastPathComponent == url.lastPathComponent {
+                        // File exists with original name
+                        addFiles(urls: [fileURL])
+                        break
+                    }
+                }
+            }
+        }
+
+        updatePreview()
+    }
+
+    func sortFiles(by option: SortOption) {
+        switch option {
+        case .name:
+            files.sort { $0.originalName.localizedStandardCompare($1.originalName) == .orderedAscending }
+        case .size:
+            files.sort { $0.fileSize > $1.fileSize }
+        case .date:
+            files.sort { (file1, file2) -> Bool in
+                guard let date1 = try? FileManager.default.attributesOfItem(atPath: file1.url.path)[.modificationDate] as? Date,
+                      let date2 = try? FileManager.default.attributesOfItem(atPath: file2.url.path)[.modificationDate] as? Date else {
+                    return false
+                }
+                return date1 > date2
+            }
+        }
     }
 
     func updatePreview() {

@@ -29,7 +29,7 @@ class ActionViewController: NSViewController {
             // Open main app with files
             NSWorkspace.shared.open(
                 fileURLs,
-                withApplicationAt: URL(fileURLWithPath: "/Applications/QuickRename.app"),
+                withApplicationAt: URL(fileURLWithPath: "/Applications/Namnge.app"),
                 configuration: NSWorkspace.OpenConfiguration()
             ) { (app, error) in
                 self.done()

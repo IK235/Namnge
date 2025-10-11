@@ -1,213 +1,141 @@
-# QuickRename 🖊️
+# Namnge
 
-Modern batch file renaming tool for macOS with menubar integration and live preview.
+AI-powered batch file renaming tool for macOS.
 
-## Features ✨
+![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)
+![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-### Current Version: v1.0
+## Features
 
-- **🎯 8 Rename Patterns:**
-  - Find & Replace - Replace text in filenames
-  - Sequential Numbers - Add numbered sequences (001, 002, etc.)
-  - Add Prefix - Add text to the beginning
-  - Add Suffix - Add text to the end
-  - Remove Text - Remove specific text
-  - Change Case - Uppercase, lowercase, title case, camelCase, snake_case
-  - Add Date - Add current date/time with custom format
-  - Regex Pattern - Advanced pattern matching
+✨ **9 Rename Patterns**
+- Find & Replace
+- Sequential Numbers
+- Add Prefix/Suffix
+- Change Case
+- Date Stamps
+- Regex Pattern Matching
+- AI Smart Rename (Groq & Apple Vision)
+- Random String
+- Custom Pattern
 
-- **👀 Live Preview**
-  - See changes before applying
-  - Visual arrows showing old → new names
-  - Conflict detection (highlights duplicates in red)
-  - Shows number of files that will be changed
+🎯 **Smart Features**
+- AI-powered filename suggestions using Groq API and Apple Vision
+- Batch rename multiple files at once
+- Real-time preview before applying changes
+- Favorites & Presets for quick access
+- Undo/Redo history
+- Duplicate detection
+- Search & filter files
 
-- **🎨 Modern Interface**
-  - Clean SwiftUI design
-  - Menubar app (always accessible)
-  - Three-panel layout
-  - Drag & drop support
+🚀 **Productivity**
+- Global hotkey (⌘⌥R) to open from anywhere
+- Menubar app - always accessible
+- Drag & drop support
+- Quick Actions from Finder
+- Dark/Light mode support
+- Launch at login option
 
-- **🛡️ Safety Features**
-  - Conflict detection
-  - Undo functionality (Cmd+Z)
-  - History tab showing all operations
-  - Files stay in list after rename
+📊 **Additional Features**
+- Usage statistics
+- Export/Import presets
+- Automatic update notifications
+- First-time onboarding tutorial
 
-- **⌨️ Keyboard Shortcuts**
-  - Cmd+Return - Rename files
-  - Cmd+Z - Undo last operation
-  - Escape - Close popover
+## Installation
 
-## Installation 🚀
-
-1. Open `QuickRename.xcodeproj` in Xcode
-2. Build and run (Cmd+R)
-3. App appears in menubar with pencil icon 🖊️
-
-## Usage 📝
-
-### Method 1: Menubar
-1. Click pencil icon in menubar
-2. Drag & drop files or click "Select Files"
-3. Choose rename pattern
-4. See live preview
-5. Click "Rename X Files" or press Cmd+Return
-
-### Method 2: Finder Extension
-1. Right-click files in Finder
-2. Services → "Rename with QuickRename"
-3. App opens with files loaded
-
-### Method 3: Quick Action
-1. Right-click files in Finder
-2. Services → "Rename with QuickRename"
-3. Opens menubar app automatically
-
-## Use Cases 💡
-
-### 1. Inconsistent Invoice Names
-**Before:**
-- `FAKTURA MAJ 2024.pdf`
-- `Faktura Mars 2024.pdf`
-- `faktura_april_2024.pdf`
-
-**Solution:** Change Case → Title Case
-
-**After:**
-- `Faktura Maj 2024.pdf`
-- `Faktura Mars 2024.pdf`
-- `Faktura April 2024.pdf`
-
-### 2. Number Receipts
-**Before:**
-- `Kvitto 001.jpg`
-- `Kvitto 002.jpg`
-
-**Solution:** Sequential Numbers (001, 002, 003)
-
-**After:**
-- `Kvitto_001.jpg`
-- `Kvitto_002.jpg`
-- `Kvitto_003.jpg`
-
-### 3. Clean Up "FINAL" Chaos
-**Before:**
-- `projekt_presentation_final.pptx`
-- `projekt_presentation_FINAL_v2.pptx`
-- `projekt_presentation_FINAL_FINAL.pptx`
-
-**Solution:** Remove Text → "_FINAL", "_final", "_v2"
-
-**After:**
-- `projekt_presentation.pptx`
-
-## Project Structure 📂
-
-```
-QuickRename/
-├── QuickRenameApp.swift          # Menubar app entry point
-├── Info.plist                    # App configuration
-├── QuickRename.entitlements      # File access permissions
-├── Models/
-│   ├── FileItem.swift           # File model
-│   ├── RenamePattern.swift      # 8 rename patterns
-│   ├── RenameViewModel.swift    # App logic
-│   └── RenameHistory.swift      # History tracking
-├── Services/
-│   └── RenameService.swift      # Rename engine
-└── Views/
-    └── ContentView.swift        # Main UI (Rename + History tabs)
-
-QuickRenameExtension/
-├── ActionViewController.swift   # Finder extension entry
-├── Info.plist                   # Extension configuration
-└── QuickRenameExtension.entitlements
-```
-
-## Development 🛠️
+### Download
+Download the latest release from [Releases](https://github.com/ikbalerdal/Namnge/releases)
 
 ### Requirements
-- macOS 14.0+
-- Xcode 15.0+
-- Swift 5.0+
+- macOS 14.0 or later
+- For AI features: Groq API key (free at [groq.com](https://groq.com))
 
-### Building
+## Usage
+
+1. Launch Namnge from Applications or use the global hotkey ⌘⌥R
+2. Add files by:
+   - Dragging files to the menubar icon
+   - Using "Open With" from Finder
+   - Using Quick Actions in Finder
+3. Select a rename pattern
+4. Configure your settings
+5. Preview the changes
+6. Click "Rename" to apply
+
+### AI Smart Rename
+
+Namnge can analyze your files and suggest intelligent names:
+
+**Groq API (Text-based)**
+- Great for documents, code files, and text
+- Requires API key from [groq.com](https://groq.com)
+
+**Apple Vision (Image-based)**
+- Perfect for photos and images
+- Uses on-device Vision framework
+- No API key needed
+
+## Global Hotkey
+
+Press **⌘⌥R** from anywhere in macOS to quickly open Namnge. Customize the hotkey in Preferences.
+
+## Building from Source
+
 ```bash
-cd /Users/ikbalerdal/Documents/QuickRename
-xcodebuild -project QuickRename.xcodeproj -scheme QuickRename -configuration Debug build
+# Clone the repository
+git clone https://github.com/ikbalerdal/Namnge.git
+cd Namnge
+
+# Open in Xcode
+open Namnge.xcodeproj
+
+# Build and run (⌘R)
 ```
 
-### Installing
-```bash
-cp -R build/Debug/QuickRename.app /Applications/
-```
+## Configuration
 
-### Git Workflow
-```bash
-# Current stable version
-git checkout main
+### Groq API Setup
+1. Get a free API key from [groq.com](https://groq.com)
+2. Open Namnge and select "AI Smart Rename"
+3. Choose "Groq (Text-based AI)"
+4. Enter your API key
+5. Start renaming!
 
-# Create feature branch
-git checkout -b feature/ai-rename
+### Accessibility Permission
+For the global hotkey to work, Namnge needs Accessibility permission:
+1. Go to System Settings > Privacy & Security > Accessibility
+2. Enable Namnge
+3. Restart Namnge
 
-# Commit changes
-git add .
-git commit -m "Add AI smart rename feature"
+## Technology Stack
 
-# Merge back to main when stable
-git checkout main
-git merge feature/ai-rename
-```
+- **SwiftUI** - Modern UI framework
+- **AppKit** - Native macOS integration
+- **Combine** - Reactive programming
+- **Vision** - Apple's on-device image analysis
+- **Groq API** - Fast LLM inference
+- **ServiceManagement** - Launch at login
+- **Carbon** - Global hotkey support
 
-## Backups 💾
+## Contributing
 
-**Manual Backup:**
-```bash
-cp -R QuickRename QuickRename-Backup-$(date +%Y%m%d-%H%M%S)
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-**Latest Backup:**
-- `/Users/ikbalerdal/Documents/QuickRename-Backup-20251011-094433/`
+## License
 
-## Roadmap 🗺️
+MIT License - see [LICENSE](LICENSE) file for details
 
-See [PRODUCT-ROADMAP.md](PRODUCT-ROADMAP.md) for detailed future plans.
+## Author
 
-### Upcoming Features:
-- **v1.1:** Templates/Presets, Better keyboard shortcuts
-- **v2.0:** AI Smart Rename (game changer! 🤖)
-- **v2.5:** AI Auto-Organize folders
-- **v3.0:** OCR, Voice commands, Metadata enrichment
+Created by Ikbal Erdal
 
-## Version History 📜
+## Acknowledgments
 
-### v1.0 (2024-10-11) - Initial Release
-- ✅ 8 rename patterns
-- ✅ Live preview with conflict detection
-- ✅ Menubar app
-- ✅ Finder extension integration
-- ✅ History tab
-- ✅ Undo functionality
-- ✅ Modern SwiftUI design
-
-## Known Issues 🐛
-
-- Extension requires manual registration on first install
-- Files must be manually cleared from list (not auto-cleared)
-- History limited to 50 items
-
-## License 📄
-
-Private project - All rights reserved.
-
-## Contact 📧
-
-Built by ikbalerdal
-- Project: QuickRename
-- Started: October 11, 2024
-- Location: Sweden 🇸🇪
+- Groq for providing fast AI inference
+- Apple Vision framework for image analysis
+- SwiftUI community for inspiration
 
 ---
 
-**Pro tip:** Use History tab to review all your rename operations! 📜✨
+Made with ❤️ in Sweden 🇸🇪
