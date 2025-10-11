@@ -1,0 +1,1 @@
+../QuickRename/Models/FileItem.swift

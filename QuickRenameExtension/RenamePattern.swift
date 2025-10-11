@@ -1,0 +1,1 @@
+../QuickRename/Models/RenamePattern.swift
