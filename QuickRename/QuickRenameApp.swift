@@ -30,10 +30,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
-        // Create popover
+        // Create popover with visual effect (liquid glass)
         popover = NSPopover()
         popover?.contentViewController = NSHostingController(rootView: ContentView().environmentObject(viewModel))
         popover?.behavior = .transient
+        popover?.appearance = NSAppearance(named: .vibrantDark)
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
