@@ -1,6 +1,6 @@
 # Namnge
 
-AI-powered batch file renaming tool for macOS.
+Free & open-source AI-powered batch file renaming tool for macOS.
 
 ![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
@@ -15,13 +15,13 @@ AI-powered batch file renaming tool for macOS.
 - Change Case
 - Date Stamps
 - Regex Pattern Matching
-- AI Smart Rename (Groq & Apple Vision)
+- AI Smart Rename (Apple Vision)
 - Random String
 - Custom Pattern
 
 🎯 **Smart Features**
-- AI-powered filename suggestions using Groq API and Apple Vision
-- Batch rename multiple files at once
+- AI-powered filename suggestions using Apple Vision
+- Batch rename unlimited files at once
 - Real-time preview before applying changes
 - Favorites & Presets for quick access
 - Undo/Redo history
@@ -35,6 +35,7 @@ AI-powered batch file renaming tool for macOS.
 - Quick Actions from Finder
 - Dark/Light mode support
 - Launch at login option
+- 8 beautiful accent colors
 
 📊 **Additional Features**
 - Usage statistics
@@ -42,27 +43,10 @@ AI-powered batch file renaming tool for macOS.
 - Automatic update notifications
 - First-time onboarding tutorial
 
-## Pricing
-
-### Free
-- 5 AI renames per month
-- Up to 50 files at once
-- 3 accent colors
-- All basic patterns
-- Global hotkey
-
-### Pro - $9.99/month or $49.99/year
-- ✨ **Unlimited AI** renames
-- ✨ **Unlimited** files
-- ✨ **All 8** accent colors
-- ✨ Export/Import presets
-- ✨ Unlimited history
-- 🎁 **7-day free trial**
-
 ## Installation
 
 ### Download
-Download the latest release from [namnge.com](https://namnge.com) or [GitHub Releases](https://github.com/ikbalerdal/Namnge/releases)
+Download the latest release from [GitHub Releases](https://github.com/IK235/Namnge/releases)
 
 ### Requirements
 - macOS 14.0 (Sonoma) or later
@@ -82,16 +66,13 @@ Download the latest release from [namnge.com](https://namnge.com) or [GitHub Rel
 
 ### AI Smart Rename
 
-Namnge can analyze your files and suggest intelligent names:
+Namnge can analyze your images and suggest intelligent names:
 
-**Groq API (Text-based)**
-- Great for documents, code files, and text
-- Requires API key from [groq.com](https://groq.com)
-
-**Apple Vision (Image-based)**
+**Apple Vision**
 - Perfect for photos and images
 - Uses on-device Vision framework
-- No API key needed
+- Completely private - no data leaves your Mac
+- No API key needed - works offline!
 
 ## Global Hotkey
 
@@ -101,7 +82,7 @@ Press **⌘⌥R** from anywhere in macOS to quickly open Namnge. Customize the h
 
 ```bash
 # Clone the repository
-git clone https://github.com/ikbalerdal/Namnge.git
+git clone https://github.com/IK235/Namnge.git
 cd Namnge
 
 # Open in Xcode
@@ -111,13 +92,6 @@ open Namnge.xcodeproj
 ```
 
 ## Configuration
-
-### Groq API Setup
-1. Get a free API key from [groq.com](https://groq.com)
-2. Open Namnge and select "AI Smart Rename"
-3. Choose "Groq (Text-based AI)"
-4. Enter your API key
-5. Start renaming!
 
 ### Accessibility Permission
 For the global hotkey to work, Namnge needs Accessibility permission:
@@ -149,8 +123,7 @@ Created by Ikbal Erdal
 
 ## Acknowledgments
 
-- Groq for providing fast AI inference
-- Apple Vision framework for image analysis
+- Apple Vision framework for on-device AI image analysis
 - SwiftUI community for inspiration
 
 ---

@@ -68,15 +68,9 @@ class RenameViewModel: ObservableObject {
 
     func addFiles(urls: [URL]) -> Int {
         let fileManager = FileManager.default
-        let maxFiles = LicenseManager.shared.maxFiles()
         var filesAdded = 0
 
         for url in urls {
-            // Check if we've reached the limit
-            if files.count >= maxFiles {
-                break
-            }
-
             var isDirectory: ObjCBool = false
             if fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) {
                 if isDirectory.boolValue {
@@ -87,9 +81,6 @@ class RenameViewModel: ObservableObject {
                         options: [.skipsHiddenFiles]
                     ) {
                         for fileURL in contents {
-                            if files.count >= maxFiles {
-                                break
-                            }
                             if !fileURL.hasDirectoryPath {
                                 if addFile(url: fileURL) {
                                     filesAdded += 1

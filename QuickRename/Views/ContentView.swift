@@ -7,8 +7,6 @@ struct ContentView: View {
     @StateObject private var presetManager = PresetManager.shared
     @ObservedObject private var preferences = AppPreferences.shared
     @ObservedObject private var updateChecker = UpdateChecker.shared
-    @ObservedObject private var licenseManager = LicenseManager.shared
-    @ObservedObject private var trialManager = TrialManager.shared
     @State private var selectedTab = 0
     @State private var showSavePresetDialog = false
     @State private var showLoadPresetMenu = false
@@ -16,9 +14,6 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasSeenOnboarding")
     @State private var preferencesWindowInstance: NSWindow?
-    @State private var showUpgradePrompt = false
-    @State private var upgradeFeature: ProFeature = .aiRename
-    @State private var upgradeUsageInfo: String?
 
     var filteredFiles: [FileItem] {
         if searchText.isEmpty {
@@ -159,9 +154,6 @@ struct ContentView: View {
                     UserDefaults.standard.set(true, forKey: "hasSeenOnboarding")
                 }
         }
-        .sheet(isPresented: $showUpgradePrompt) {
-            UpgradePromptView(feature: upgradeFeature, currentUsage: upgradeUsageInfo)
-        }
         .tint(preferences.accentColor.color)
     }
 
@@ -230,43 +222,17 @@ struct ContentView: View {
                                 Divider()
 
                                 Button {
-                                    if !licenseManager.canUseFeature(.exportPresets) {
-                                        upgradeFeature = .exportPresets
-                                        upgradeUsageInfo = nil
-                                        showUpgradePrompt = true
-                                    } else {
-                                        _ = presetManager.importPresets()
-                                    }
+                                    _ = presetManager.importPresets()
                                 } label: {
-                                    HStack {
-                                        Label("Import Presets...", systemImage: "square.and.arrow.down")
-                                        if !licenseManager.canUseFeature(.exportPresets) {
-                                            Image(systemName: "lock.fill")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
+                                    Label("Import Presets...", systemImage: "square.and.arrow.down")
                                 }
 
                                 Button {
-                                    if !licenseManager.canUseFeature(.exportPresets) {
-                                        upgradeFeature = .exportPresets
-                                        upgradeUsageInfo = nil
-                                        showUpgradePrompt = true
-                                    } else {
-                                        _ = presetManager.exportPresets()
-                                    }
+                                    _ = presetManager.exportPresets()
                                 } label: {
-                                    HStack {
-                                        Label("Export Presets...", systemImage: "square.and.arrow.up")
-                                        if !licenseManager.canUseFeature(.exportPresets) {
-                                            Image(systemName: "lock.fill")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
+                                    Label("Export Presets...", systemImage: "square.and.arrow.up")
                                 }
-                                .disabled(presetManager.presets.isEmpty && licenseManager.canUseFeature(.exportPresets))
+                                .disabled(presetManager.presets.isEmpty)
                             } label: {
                                 Label("Load", systemImage: "folder")
                             }
@@ -296,18 +262,6 @@ struct ContentView: View {
                     HStack {
                         Text("Preview (\(filteredFiles.count) files)")
                             .font(.headline)
-
-                        // File limit indicator for free users
-                        if !licenseManager.isPro && !trialManager.isTrialActive {
-                            let maxFiles = licenseManager.maxFiles()
-                            Text("\(viewModel.files.count)/\(maxFiles)")
-                                .font(.caption.bold())
-                                .foregroundColor(viewModel.files.count >= maxFiles ? .red : .secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(viewModel.files.count >= maxFiles ? Color.red.opacity(0.2) : Color.secondary.opacity(0.1))
-                                .cornerRadius(4)
-                        }
 
                         if viewModel.hasConflicts {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -387,18 +341,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
 
                             Button("Select Files") {
-                                let oldCount = viewModel.files.count
                                 viewModel.selectFiles()
-
-                                // Check if we hit the file limit
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    let maxFiles = licenseManager.maxFiles()
-                                    if viewModel.files.count >= maxFiles && oldCount < maxFiles {
-                                        upgradeFeature = .unlimitedFiles
-                                        upgradeUsageInfo = "\(viewModel.files.count) of \(maxFiles) files (limit reached)"
-                                        showUpgradePrompt = true
-                                    }
-                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(preferences.accentColor.color)
@@ -413,18 +356,7 @@ struct ContentView: View {
                 }
                 .background(Color(nsColor: .controlBackgroundColor))
                 .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-                    let oldCount = viewModel.files.count
                     viewModel.handleDrop(providers: providers)
-
-                    // Check if we hit the file limit
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        let maxFiles = licenseManager.maxFiles()
-                        if viewModel.files.count >= maxFiles && oldCount < maxFiles {
-                            upgradeFeature = .unlimitedFiles
-                            upgradeUsageInfo = "\(viewModel.files.count) of \(maxFiles) files (limit reached)"
-                            showUpgradePrompt = true
-                        }
-                    }
                     return true
                 }
 
@@ -443,27 +375,11 @@ struct ContentView: View {
                     // AI Generate button (only for AI Smart pattern)
                     if viewModel.selectedPattern == .aiSmart {
                         Button(action: {
-                            // Check if user can use AI
-                            if !licenseManager.canUseFeature(.aiRename) {
-                                upgradeFeature = .aiRename
-                                upgradeUsageInfo = "\(trialManager.getAIUsageCount()) of 5 AI renames used this month"
-                                showUpgradePrompt = true
-                                return
-                            }
-
                             Task {
                                 await viewModel.performAIRename()
                             }
                         }) {
-                            HStack(spacing: 4) {
-                                Label("Generate AI Names", systemImage: "sparkles")
-
-                                // Show remaining AI usage for free users
-                                if !licenseManager.isPro && !trialManager.isTrialActive {
-                                    Text("(\(trialManager.getRemainingAIUsage()) left)")
-                                        .font(.caption)
-                                }
-                            }
+                            Label("Generate AI Names", systemImage: "sparkles")
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(preferences.accentColor.color)
