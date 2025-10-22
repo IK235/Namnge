@@ -4,7 +4,15 @@ import AppKit
 struct PreferencesView: View {
     @ObservedObject var preferences = AppPreferences.shared
     @ObservedObject var updateChecker = UpdateChecker.shared
+    @ObservedObject var licenseManager = LicenseManager.shared
+    @ObservedObject var trialManager = TrialManager.shared
     @State private var editingAction: String? = nil
+    @State private var licenseKey: String = ""
+    @State private var licenseEmail: String = ""
+    @State private var showLicenseAlert: Bool = false
+    @State private var licenseAlertMessage: String = ""
+    @State private var isValidatingLicense: Bool = false
+    @State private var showColorUpgradePrompt: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +55,8 @@ struct PreferencesView: View {
 
                         HStack(spacing: 12) {
                             ForEach(AccentColor.allCases, id: \.self) { color in
+                                let isLocked = !licenseManager.availableColors().contains(color)
+
                                 Circle()
                                     .fill(color.color.gradient)
                                     .frame(width: 28, height: 28)
@@ -60,12 +70,23 @@ struct PreferencesView: View {
                                             .foregroundColor(.white)
                                             .opacity(preferences.accentColor == color ? 1 : 0)
                                     )
+                                    .overlay(
+                                        Image(systemName: "lock.fill")
+                                            .font(.caption2)
+                                            .foregroundColor(.white)
+                                            .opacity(isLocked ? 1 : 0)
+                                    )
+                                    .opacity(isLocked ? 0.5 : 1.0)
                                     .onTapGesture {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            preferences.accentColor = color
+                                        if isLocked {
+                                            showColorUpgradePrompt = true
+                                        } else {
+                                            withAnimation(.spring(response: 0.3)) {
+                                                preferences.accentColor = color
+                                            }
                                         }
                                     }
-                                    .help(color.rawValue)
+                                    .help(isLocked ? "\(color.rawValue) (Pro)" : color.rawValue)
                             }
                         }
                     }
@@ -101,6 +122,148 @@ struct PreferencesView: View {
                             )
                         }
                     )
+                }
+
+                Divider()
+
+                // License Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("License")
+                            .font(.title3.bold())
+
+                        Spacer()
+
+                        if licenseManager.isPro {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Pro")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.yellow)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.yellow.opacity(0.2))
+                            .cornerRadius(6)
+                        } else if trialManager.isTrialActive {
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.orange)
+                                Text("Trial: \(trialManager.trialDaysRemaining) days left")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange.opacity(0.2))
+                            .cornerRadius(6)
+                        } else {
+                            Text("Free")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(6)
+                        }
+                    }
+
+                    if licenseManager.isPro {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("License Email:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(licenseManager.licenseEmail)
+                                    .font(.caption.bold())
+                            }
+
+                            if let expiryDate = licenseManager.expiryDate {
+                                HStack {
+                                    Text("Expires:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(expiryDate, style: .date)
+                                        .font(.caption.bold())
+                                }
+                            }
+
+                            Button("Deactivate License") {
+                                licenseManager.deactivateLicense()
+                            }
+                            .buttonStyle(.bordered)
+                            .foregroundColor(.red)
+                        }
+                        .padding(12)
+                        .background(preferences.accentColor.color.opacity(0.1))
+                        .cornerRadius(8)
+                    } else {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if !trialManager.hasStartedTrial {
+                                Button {
+                                    trialManager.startTrial()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "star.fill")
+                                        Text("Start 7-Day Pro Trial")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(preferences.accentColor.color)
+                            }
+
+                            Text("Enter your license key to unlock Pro features:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            TextField("License Key (e.g. NAMNGE-PRO-XXXX-XXXX)", text: $licenseKey)
+                                .textFieldStyle(.roundedBorder)
+                                .onSubmit { /* Prevent default behavior */ }
+
+                            TextField("Email", text: $licenseEmail)
+                                .textFieldStyle(.roundedBorder)
+                                .onSubmit { /* Prevent default behavior */ }
+
+                            HStack {
+                                Button {
+                                    isValidatingLicense = true
+                                    Task {
+                                        let result = await licenseManager.validateLicense(key: licenseKey, email: licenseEmail)
+                                        isValidatingLicense = false
+                                        licenseAlertMessage = result.message
+                                        showLicenseAlert = true
+
+                                        if result.success {
+                                            licenseKey = ""
+                                            licenseEmail = ""
+                                        }
+                                    }
+                                } label: {
+                                    if isValidatingLicense {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .frame(width: 100)
+                                    } else {
+                                        Text("Activate License")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(preferences.accentColor.color)
+                                .disabled(licenseKey.isEmpty || licenseEmail.isEmpty || isValidatingLicense)
+
+                                Button("Buy Pro") {
+                                    NSWorkspace.shared.open(URL(string: "https://namnge.com/pricing")!)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                }
+                .alert("License Activation", isPresented: $showLicenseAlert) {
+                    Button("OK") { }
+                } message: {
+                    Text(licenseAlertMessage)
                 }
 
                 Divider()
@@ -145,9 +308,12 @@ struct PreferencesView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 540)
+        .frame(width: 500, height: 680)
         .accentColor(preferences.accentColor.color)
         .tint(preferences.accentColor.color)
+        .sheet(isPresented: $showColorUpgradePrompt) {
+            UpgradePromptView(feature: .allColors, currentUsage: nil)
+        }
     }
 }
 

@@ -5,29 +5,16 @@ import AppKit
 class AIRenameService {
     static let shared = AIRenameService()
 
-    private let groqAPIKey = "YOUR_GROQ_API_KEY_HERE"
-    private let groqEndpoint = "https://api.groq.com/openai/v1/chat/completions"
-
-    // Add your other API keys here
-    private var claudeAPIKey: String? = nil  // Set if you have it
-    private var openAIKey: String? = nil     // Set if you have it
-
     private init() {}
 
     // MARK: - Main AI Rename Function
 
-    func generateSmartName(for file: FileItem, prompt: String, provider: AIProvider = .groq) async throws -> String {
-        switch provider {
-        case .groq:
-            return try await renameWithGroq(file: file, prompt: prompt)
-        case .claude:
-            return try await renameWithClaude(file: file, prompt: prompt)
-        case .local:
-            return try await renameWithAppleVision(file: file, prompt: prompt)
-        }
+    func generateSmartName(for file: FileItem, prompt: String, provider: AIProvider = .local) async throws -> String {
+        // Only use Apple Vision (local, on-device AI)
+        return try await renameWithAppleVision(file: file, prompt: prompt)
     }
 
-    func batchRename(files: [FileItem], prompt: String, provider: AIProvider = .groq) async throws -> [(original: FileItem, newName: String)] {
+    func batchRename(files: [FileItem], prompt: String, provider: AIProvider = .local) async throws -> [(original: FileItem, newName: String)] {
         var results: [(FileItem, String)] = []
 
         // Process files in parallel (max 5 at a time to not overwhelm API)
@@ -53,145 +40,113 @@ class AIRenameService {
         return results
     }
 
-    // MARK: - Groq API (Fast & Free)
-
-    private func renameWithGroq(file: FileItem, prompt: String) async throws -> String {
-        let url = URL(string: groqEndpoint)!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(groqAPIKey)", forHTTPHeaderField: "Authorization")
-
-        // Check if it's an image file
-        let isImage = ["jpg", "jpeg", "png", "heic", "gif"].contains(file.fileExtension.lowercased())
-
-        let systemPrompt = """
-        You are a file naming expert. Generate a concise, descriptive filename based on the user's request.
-        Rules:
-        - No spaces (use hyphens or underscores)
-        - Keep original file extension
-        - Max 50 characters
-        - Be descriptive but concise
-        - Use proper capitalization (Title-Case or kebab-case)
-        - Return ONLY the filename, nothing else
-        """
-
-        let userMessage: String
-        if isImage {
-            // For images, try to analyze if possible
-            let imageDescription = await analyzeImageLocally(file: file)
-            userMessage = """
-            Original filename: \(file.originalName)
-            File type: Image (\(file.fileExtension))
-            Image content: \(imageDescription ?? "Unknown")
-            User request: \(prompt)
-
-            Generate a new filename.
-            """
-        } else {
-            userMessage = """
-            Original filename: \(file.originalName)
-            File type: \(file.fileExtension)
-            User request: \(prompt)
-
-            Generate a new filename.
-            """
-        }
-
-        let body: [String: Any] = [
-            "model": "llama-3.1-8b-instant",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userMessage]
-            ],
-            "temperature": 0.7,
-            "max_tokens": 100
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw AIError.apiError("API request failed")
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-
-        guard let choices = json?["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw AIError.parsingFailed
-        }
-
-        // Clean up the response
-        let cleanName = content
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\"", with: "")
-            .replacingOccurrences(of: "'", with: "")
-
-        // Ensure it has the right extension
-        let hasExtension = cleanName.lowercased().hasSuffix(".\(file.fileExtension.lowercased())")
-        return hasExtension ? cleanName : "\(cleanName).\(file.fileExtension)"
-    }
-
-    // MARK: - Claude API (Best Quality)
-
-    private func renameWithClaude(file: FileItem, prompt: String) async throws -> String {
-        guard let apiKey = claudeAPIKey else {
-            // Fallback to Groq if no Claude key
-            return try await renameWithGroq(file: file, prompt: prompt)
-        }
-
-        // TODO: Implement Claude API if you get API key
-        // For now, fallback to Groq
-        return try await renameWithGroq(file: file, prompt: prompt)
-    }
-
-    // MARK: - Apple Vision (Local/Offline)
+    // MARK: - Apple Vision (Local AI)
 
     private func renameWithAppleVision(file: FileItem, prompt: String) async throws -> String {
-        let imageDescription = await analyzeImageLocally(file: file)
+        // Get multiple analysis results
+        let imageAnalysis = await analyzeImageWithMultipleMethods(file: file)
 
-        // Simple local logic based on image analysis
-        if let description = imageDescription {
-            let words = prompt.split(separator: " ").prefix(3).joined(separator: "-")
-            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-                .replacingOccurrences(of: "/", with: "-")
+        // Build filename from prompt + analysis
+        var components: [String] = []
 
-            return "\(words)-\(description)-\(timestamp).\(file.fileExtension)"
+        // Add cleaned prompt words (max 3)
+        let promptWords = prompt
+            .lowercased()
+            .split(separator: " ")
+            .filter { $0.count > 2 } // Skip short words like "a", "in", "of"
+            .prefix(3)
+            .map { String($0) }
+        components.append(contentsOf: promptWords)
+
+        // Add image classification if available
+        if let classification = imageAnalysis.classification?.prefix(2) {
+            components.append(contentsOf: classification.map { $0.replacingOccurrences(of: " ", with: "-") })
         }
 
-        // Fallback: use prompt + timestamp
-        let cleanPrompt = prompt.replacingOccurrences(of: " ", with: "-")
-        return "\(cleanPrompt)-\(file.nameWithoutExtension).\(file.fileExtension)"
+        // Add scene if available (but different from classification)
+        if let scene = imageAnalysis.scene,
+           !components.contains(where: { $0.contains(scene) }) {
+            components.append(scene)
+        }
+
+        // Create base name (max 4 components to keep it reasonable)
+        let baseName = components
+            .prefix(4)
+            .joined(separator: "-")
+            .lowercased()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+
+        // Add index if multiple files (optional - could use timestamp instead)
+        let cleanName = baseName.isEmpty ? "renamed-image" : baseName
+
+        return "\(cleanName).\(file.fileExtension)"
     }
 
-    private func analyzeImageLocally(file: FileItem) async -> String? {
+    private func analyzeImageWithMultipleMethods(file: FileItem) async -> ImageAnalysisResult {
         guard let image = NSImage(contentsOf: file.url),
               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return nil
+            return ImageAnalysisResult()
         }
 
         return await withCheckedContinuation { continuation in
-            let request = VNClassifyImageRequest { request, error in
-                guard let observations = request.results as? [VNClassificationObservation],
-                      let topResult = observations.first else {
-                    continuation.resume(returning: nil)
-                    return
-                }
+            var result = ImageAnalysisResult()
+            let dispatchGroup = DispatchGroup()
 
-                // Get top classification
-                let label = topResult.identifier.replacingOccurrences(of: " ", with: "-")
-                continuation.resume(returning: label)
+            // 1. Image Classification (what is it?)
+            dispatchGroup.enter()
+            let classifyRequest = VNClassifyImageRequest { request, _ in
+                if let observations = request.results as? [VNClassificationObservation] {
+                    result.classification = observations
+                        .prefix(3)
+                        .filter { $0.confidence > 0.3 }
+                        .map { $0.identifier }
+                }
+                dispatchGroup.leave()
             }
 
+            // 2. Scene Classification (where/what scene?)
+            dispatchGroup.enter()
+            let sceneRequest = VNRecognizeAnimalsRequest { request, _ in
+                if let observations = request.results as? [VNRecognizedObjectObservation],
+                   let topObservation = observations.first {
+                    result.scene = topObservation.labels.first?.identifier
+                }
+                dispatchGroup.leave()
+            }
+
+            // 3. Text Recognition (any text in image?)
+            dispatchGroup.enter()
+            let textRequest = VNRecognizeTextRequest { request, _ in
+                if let observations = request.results as? [VNRecognizedTextObservation] {
+                    let recognizedText = observations
+                        .compactMap { $0.topCandidates(1).first?.string }
+                        .joined(separator: " ")
+                    if !recognizedText.isEmpty {
+                        result.text = recognizedText.prefix(30).description
+                    }
+                }
+                dispatchGroup.leave()
+            }
+            textRequest.recognitionLevel = .fast
+
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            try? handler.perform([request])
+
+            try? handler.perform([classifyRequest, sceneRequest, textRequest])
+
+            dispatchGroup.notify(queue: .main) {
+                continuation.resume(returning: result)
+            }
         }
     }
+
+}
+
+// MARK: - Image Analysis Result
+
+struct ImageAnalysisResult {
+    var classification: [String]? // What it is (cat, food, document)
+    var scene: String?              // Scene type (indoor, outdoor, nature)
+    var text: String?               // Any text found in image
 }
 
 // MARK: - Errors

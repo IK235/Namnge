@@ -7,6 +7,8 @@ struct ContentView: View {
     @StateObject private var presetManager = PresetManager.shared
     @ObservedObject private var preferences = AppPreferences.shared
     @ObservedObject private var updateChecker = UpdateChecker.shared
+    @ObservedObject private var licenseManager = LicenseManager.shared
+    @ObservedObject private var trialManager = TrialManager.shared
     @State private var selectedTab = 0
     @State private var showSavePresetDialog = false
     @State private var showLoadPresetMenu = false
@@ -14,6 +16,9 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "hasSeenOnboarding")
     @State private var preferencesWindowInstance: NSWindow?
+    @State private var showUpgradePrompt = false
+    @State private var upgradeFeature: ProFeature = .aiRename
+    @State private var upgradeUsageInfo: String?
 
     var filteredFiles: [FileItem] {
         if searchText.isEmpty {
@@ -154,6 +159,9 @@ struct ContentView: View {
                     UserDefaults.standard.set(true, forKey: "hasSeenOnboarding")
                 }
         }
+        .sheet(isPresented: $showUpgradePrompt) {
+            UpgradePromptView(feature: upgradeFeature, currentUsage: upgradeUsageInfo)
+        }
         .tint(preferences.accentColor.color)
     }
 
@@ -222,17 +230,43 @@ struct ContentView: View {
                                 Divider()
 
                                 Button {
-                                    _ = presetManager.importPresets()
+                                    if !licenseManager.canUseFeature(.exportPresets) {
+                                        upgradeFeature = .exportPresets
+                                        upgradeUsageInfo = nil
+                                        showUpgradePrompt = true
+                                    } else {
+                                        _ = presetManager.importPresets()
+                                    }
                                 } label: {
-                                    Label("Import Presets...", systemImage: "square.and.arrow.down")
+                                    HStack {
+                                        Label("Import Presets...", systemImage: "square.and.arrow.down")
+                                        if !licenseManager.canUseFeature(.exportPresets) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
 
                                 Button {
-                                    _ = presetManager.exportPresets()
+                                    if !licenseManager.canUseFeature(.exportPresets) {
+                                        upgradeFeature = .exportPresets
+                                        upgradeUsageInfo = nil
+                                        showUpgradePrompt = true
+                                    } else {
+                                        _ = presetManager.exportPresets()
+                                    }
                                 } label: {
-                                    Label("Export Presets...", systemImage: "square.and.arrow.up")
+                                    HStack {
+                                        Label("Export Presets...", systemImage: "square.and.arrow.up")
+                                        if !licenseManager.canUseFeature(.exportPresets) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
-                                .disabled(presetManager.presets.isEmpty)
+                                .disabled(presetManager.presets.isEmpty && licenseManager.canUseFeature(.exportPresets))
                             } label: {
                                 Label("Load", systemImage: "folder")
                             }
@@ -262,6 +296,18 @@ struct ContentView: View {
                     HStack {
                         Text("Preview (\(filteredFiles.count) files)")
                             .font(.headline)
+
+                        // File limit indicator for free users
+                        if !licenseManager.isPro && !trialManager.isTrialActive {
+                            let maxFiles = licenseManager.maxFiles()
+                            Text("\(viewModel.files.count)/\(maxFiles)")
+                                .font(.caption.bold())
+                                .foregroundColor(viewModel.files.count >= maxFiles ? .red : .secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(viewModel.files.count >= maxFiles ? Color.red.opacity(0.2) : Color.secondary.opacity(0.1))
+                                .cornerRadius(4)
+                        }
 
                         if viewModel.hasConflicts {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -313,6 +359,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                             TextField("Search files...", text: $searchText)
                                 .textFieldStyle(.plain)
+                                .onSubmit { /* Prevent default behavior */ }
                             if !searchText.isEmpty {
                                 Button {
                                     searchText = ""
@@ -340,7 +387,18 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
 
                             Button("Select Files") {
+                                let oldCount = viewModel.files.count
                                 viewModel.selectFiles()
+
+                                // Check if we hit the file limit
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    let maxFiles = licenseManager.maxFiles()
+                                    if viewModel.files.count >= maxFiles && oldCount < maxFiles {
+                                        upgradeFeature = .unlimitedFiles
+                                        upgradeUsageInfo = "\(viewModel.files.count) of \(maxFiles) files (limit reached)"
+                                        showUpgradePrompt = true
+                                    }
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(preferences.accentColor.color)
@@ -355,7 +413,18 @@ struct ContentView: View {
                 }
                 .background(Color(nsColor: .controlBackgroundColor))
                 .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                    let oldCount = viewModel.files.count
                     viewModel.handleDrop(providers: providers)
+
+                    // Check if we hit the file limit
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        let maxFiles = licenseManager.maxFiles()
+                        if viewModel.files.count >= maxFiles && oldCount < maxFiles {
+                            upgradeFeature = .unlimitedFiles
+                            upgradeUsageInfo = "\(viewModel.files.count) of \(maxFiles) files (limit reached)"
+                            showUpgradePrompt = true
+                        }
+                    }
                     return true
                 }
 
@@ -374,11 +443,27 @@ struct ContentView: View {
                     // AI Generate button (only for AI Smart pattern)
                     if viewModel.selectedPattern == .aiSmart {
                         Button(action: {
+                            // Check if user can use AI
+                            if !licenseManager.canUseFeature(.aiRename) {
+                                upgradeFeature = .aiRename
+                                upgradeUsageInfo = "\(trialManager.getAIUsageCount()) of 5 AI renames used this month"
+                                showUpgradePrompt = true
+                                return
+                            }
+
                             Task {
                                 await viewModel.performAIRename()
                             }
                         }) {
-                            Label("Generate AI Names", systemImage: "sparkles")
+                            HStack(spacing: 4) {
+                                Label("Generate AI Names", systemImage: "sparkles")
+
+                                // Show remaining AI usage for free users
+                                if !licenseManager.isPro && !trialManager.isTrialActive {
+                                    Text("(\(trialManager.getRemainingAIUsage()) left)")
+                                        .font(.caption)
+                                }
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(preferences.accentColor.color)
@@ -675,13 +760,16 @@ struct PatternSettingsView: View {
             switch pattern {
             case .findReplace:
                 TextField("Find text", text: $operation.findText)
+                    .onSubmit { /* Prevent default behavior */ }
                 TextField("Replace with", text: $operation.replaceText)
+                    .onSubmit { /* Prevent default behavior */ }
 
             case .sequential:
                 HStack {
                     Text("Start at:")
                     TextField("Number", value: $operation.sequentialStart, format: .number)
                         .frame(width: 80)
+                        .onSubmit { /* Prevent default behavior */ }
                 }
                 HStack {
                     Text("Padding:")
@@ -696,12 +784,15 @@ struct PatternSettingsView: View {
 
             case .prefix:
                 TextField("Prefix text", text: $operation.prefixText)
+                    .onSubmit { /* Prevent default behavior */ }
 
             case .suffix:
                 TextField("Suffix text", text: $operation.suffixText)
+                    .onSubmit { /* Prevent default behavior */ }
 
             case .removeText:
                 TextField("Text to remove", text: $operation.removeText)
+                    .onSubmit { /* Prevent default behavior */ }
 
             case .changeCase:
                 Picker("Case style", selection: $operation.caseStyle) {
@@ -712,13 +803,16 @@ struct PatternSettingsView: View {
 
             case .dateStamp:
                 TextField("Date format", text: $operation.dateFormat)
+                    .onSubmit { /* Prevent default behavior */ }
                 Text("Example: \(formattedDate)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
             case .regex:
                 TextField("Regex pattern", text: $operation.regexPattern)
+                    .onSubmit { /* Prevent default behavior */ }
                 TextField("Replacement", text: $operation.regexReplacement)
+                    .onSubmit { /* Prevent default behavior */ }
                 Text("Example: IMG_(\\d+) → Photo_$1")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -730,17 +824,11 @@ struct PatternSettingsView: View {
 
                     TextField("e.g., 'Paris vacation photos' or 'Invoices from Q1 2024'", text: $operation.aiPrompt, axis: .vertical)
                         .lineLimit(2...4)
+                        .onSubmit { /* Prevent default behavior */ }
 
-                    HStack {
-                        Text("AI Provider:")
-                            .font(.caption)
-
-                        Picker("", selection: $operation.aiProvider) {
-                            Text("⚡ Groq (Fast)").tag(AIProvider.groq)
-                            Text("🧠 Apple Vision (Local)").tag(AIProvider.local)
-                        }
-                        .labelsHidden()
-                    }
+                    Text("✨ Powered by Apple Vision AI (on-device)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("💡 Tips:")
@@ -749,7 +837,7 @@ struct PatternSettingsView: View {
                             .font(.caption2)
                         Text("• Mention location, date, or subject")
                             .font(.caption2)
-                        Text("• AI works best with images and documents")
+                        Text("• Works best with images - fully offline & private")
                             .font(.caption2)
                     }
                     .padding(8)
@@ -784,6 +872,7 @@ struct SavePresetDialog: View {
             TextField("Preset name (e.g. 'Travel Photos')", text: $presetName)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 300)
+                .onSubmit { /* Prevent default behavior */ }
 
             HStack(spacing: 12) {
                 Button("Cancel") {

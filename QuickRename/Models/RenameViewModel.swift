@@ -66,10 +66,17 @@ class RenameViewModel: ObservableObject {
         }
     }
 
-    func addFiles(urls: [URL]) {
+    func addFiles(urls: [URL]) -> Int {
         let fileManager = FileManager.default
+        let maxFiles = LicenseManager.shared.maxFiles()
+        var filesAdded = 0
 
         for url in urls {
+            // Check if we've reached the limit
+            if files.count >= maxFiles {
+                break
+            }
+
             var isDirectory: ObjCBool = false
             if fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) {
                 if isDirectory.boolValue {
@@ -80,24 +87,34 @@ class RenameViewModel: ObservableObject {
                         options: [.skipsHiddenFiles]
                     ) {
                         for fileURL in contents {
+                            if files.count >= maxFiles {
+                                break
+                            }
                             if !fileURL.hasDirectoryPath {
-                                addFile(url: fileURL)
+                                if addFile(url: fileURL) {
+                                    filesAdded += 1
+                                }
                             }
                         }
                     }
                 } else {
-                    addFile(url: url)
+                    if addFile(url: url) {
+                        filesAdded += 1
+                    }
                 }
             }
         }
 
         updatePreview()
+        return filesAdded
     }
 
-    private func addFile(url: URL) {
+    private func addFile(url: URL) -> Bool {
         // Avoid duplicates
-        guard !files.contains(where: { $0.url == url }) else { return }
+        guard !files.contains(where: { $0.url == url }) else { return false }
+
         files.append(FileItem(url: url))
+        return true
     }
 
     func clearFiles() {
@@ -119,7 +136,7 @@ class RenameViewModel: ObservableObject {
                 for case let fileURL as URL in enumerator {
                     if fileURL.lastPathComponent == url.lastPathComponent {
                         // File exists with original name
-                        addFiles(urls: [fileURL])
+                        _ = addFiles(urls: [fileURL])
                         break
                     }
                 }

@@ -42,14 +42,31 @@ AI-powered batch file renaming tool for macOS.
 - Automatic update notifications
 - First-time onboarding tutorial
 
+## Pricing
+
+### Free
+- 5 AI renames per month
+- Up to 50 files at once
+- 3 accent colors
+- All basic patterns
+- Global hotkey
+
+### Pro - $9.99/month or $49.99/year
+- ✨ **Unlimited AI** renames
+- ✨ **Unlimited** files
+- ✨ **All 8** accent colors
+- ✨ Export/Import presets
+- ✨ Unlimited history
+- 🎁 **7-day free trial**
+
 ## Installation
 
 ### Download
-Download the latest release from [Releases](https://github.com/ikbalerdal/Namnge/releases)
+Download the latest release from [namnge.com](https://namnge.com) or [GitHub Releases](https://github.com/ikbalerdal/Namnge/releases)
 
 ### Requirements
-- macOS 14.0 or later
-- For AI features: Groq API key (free at [groq.com](https://groq.com))
+- macOS 14.0 (Sonoma) or later
+- Apple Silicon or Intel Mac
 
 ## Usage
 

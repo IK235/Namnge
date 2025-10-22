@@ -1,9 +1,7 @@
 import Foundation
 
 enum AIProvider: String, CaseIterable {
-    case groq       // Fast & Free (Mixtral)
-    case claude     // Best quality (Anthropic)
-    case local      // Apple Vision (offline fallback)
+    case local      // Apple Vision (only option)
 }
 
 enum RenamePattern: String, CaseIterable, Identifiable {
@@ -72,7 +70,7 @@ struct RenameOperation {
 
     // AI Settings
     var aiPrompt: String = ""
-    var aiProvider: AIProvider = .groq
+    var aiProvider: AIProvider = .local
 
     func apply(to filename: String) -> String {
         let components = filename.split(separator: ".", omittingEmptySubsequences: false)

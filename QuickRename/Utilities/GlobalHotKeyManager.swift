@@ -18,15 +18,9 @@ class GlobalHotKeyManager {
 
         currentShortcut = shortcut
 
-        // Use NSEvent.addGlobalMonitorForEvents instead of Carbon
+        // Only use global monitor - this way hotkey only works when app is in background
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleKeyEvent(event)
-        }
-
-        // Also monitor local events
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleKeyEvent(event)
-            return event
         }
     }
 

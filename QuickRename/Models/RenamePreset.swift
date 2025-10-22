@@ -56,7 +56,7 @@ struct RenamePreset: Codable, Identifiable {
         operation.regexReplacement = regexReplacement
         operation.sequentialStart = sequentialStart
         operation.sequentialPadding = sequentialPadding
-        operation.aiProvider = AIProvider(rawValue: aiProviderRaw) ?? .groq
+        operation.aiProvider = AIProvider(rawValue: aiProviderRaw) ?? .local
         operation.aiPrompt = aiPrompt
         return operation
     }
